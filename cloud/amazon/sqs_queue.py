@@ -150,26 +150,21 @@ def create_or_update_sqs_queue(connection, module):
         if queue:
             # Update existing            
             result['changed'] = update_sqs_queue(queue, check_mode=module.check_mode, **queue_attributes)
+        else:
+            # Create new
+            if not module.check_mode:
+                queue = connection.create_queue(queue_name)
+                update_sqs_queue(queue, **queue_attributes)
+            result['changed'] = True
+        
+        if not module.check_mode:
             result['queue_arn'] = queue.get_attributes('QueueArn')['QueueArn']
             result['default_visibility_timeout'] = queue.get_attributes('VisibilityTimeout')['VisibilityTimeout']
             result['message_retention_period'] = queue.get_attributes('MessageRetentionPeriod')['MessageRetentionPeriod']
             result['maximum_message_size'] = queue.get_attributes('MaximumMessageSize')['MaximumMessageSize']
             result['delivery_delay'] = queue.get_attributes('DelaySeconds')['DelaySeconds']
             result['receive_message_wait_time'] = queue.get_attributes('ReceiveMessageWaitTimeSeconds')['ReceiveMessageWaitTimeSeconds']
-
-        else:
-            # Create new
-            if not module.check_mode:
-                queue = connection.create_queue(queue_name)
-                update_sqs_queue(queue, **queue_attributes)
-                result['queue_arn'] = queue.get_attributes('QueueArn')['QueueArn']
-                result['default_visibility_timeout'] = queue.get_attributes('VisibilityTimeout')['VisibilityTimeout']
-                result['message_retention_period'] = queue.get_attributes('MessageRetentionPeriod')['MessageRetentionPeriod']
-                result['maximum_message_size'] = queue.get_attributes('MaximumMessageSize')['MaximumMessageSize']
-                result['delivery_delay'] = queue.get_attributes('DelaySeconds')['DelaySeconds']
-                result['receive_message_wait_time'] = queue.get_attributes('ReceiveMessageWaitTimeSeconds')['ReceiveMessageWaitTimeSeconds']
-            result['changed'] = True
-
+          
     except BotoServerError:
         result['msg'] = 'Failed to create/update sqs queue due to error: ' + traceback.format_exc()
         module.fail_json(**result)
